@@ -14,6 +14,10 @@
     "build:production": "cp prisma/schema.production.prisma prisma/schema.prisma && npm run db:generate && npm run build",
     "deploy:prepare": "cp prisma/schema.production.prisma prisma/schema.prisma"
   },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
     "@hookform/resolvers": "^5.2.1",
