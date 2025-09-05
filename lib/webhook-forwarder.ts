@@ -79,15 +79,43 @@ export async function forwardLeadToWebhooks(lead: LeadData, userId: string, page
 
         console.log(`Forwarding lead ${lead.id} to webhook: ${config.webhookUrl}`)
 
-        // Send webhook request
-        const response = await fetch(config.webhookUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(webhookPayload),
-          signal: AbortSignal.timeout(10000) // 10 second timeout
-        })
+        // Send webhook request with retry logic
+        let response: Response | null = null
+        let lastError: Error | null = null
+        const maxRetries = 3
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`Attempt ${attempt}/${maxRetries} for webhook: ${config.webhookUrl}`)
+            
+            response = await fetch(config.webhookUrl, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(webhookPayload),
+              signal: AbortSignal.timeout(30000) // Increased to 30 seconds
+            })
+            
+            if (response.ok) {
+              console.log(`Successfully forwarded lead ${lead.id} to ${config.webhookUrl} on attempt ${attempt}`)
+              break
+            } else {
+              console.log(`Attempt ${attempt} failed with status ${response.status}: ${response.statusText}`)
+              if (attempt < maxRetries) {
+                // Wait before retry (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000))
+              }
+            }
+          } catch (error) {
+            lastError = error as Error
+            console.log(`Attempt ${attempt} failed with error:`, error instanceof Error ? error.message : error)
+            if (attempt < maxRetries) {
+              // Wait before retry (exponential backoff)
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000))
+            }
+          }
+        }
 
-        if (response.ok) {
+        if (response && response.ok) {
           console.log(`Successfully forwarded lead ${lead.id} to ${config.webhookUrl}`)
           
           // Update lastUsed timestamp
@@ -95,16 +123,26 @@ export async function forwardLeadToWebhooks(lead: LeadData, userId: string, page
             where: { id: config.id },
             data: { lastUsed: new Date() }
           })
+          
+          return {
+            configId: config.id,
+            url: config.webhookUrl,
+            success: true,
+            status: response.status,
+            statusText: response.statusText
+          }
         } else {
-          console.error(`Webhook forwarding failed for ${config.webhookUrl}: ${response.status} ${response.statusText}`)
-        }
-
-        return {
-          configId: config.id,
-          url: config.webhookUrl,
-          success: response.ok,
-          status: response.status,
-          statusText: response.statusText
+          const errorMessage = lastError ? lastError.message : (response ? `${response.status} ${response.statusText}` : 'No response received')
+          console.error(`Webhook forwarding failed for ${config.webhookUrl} after ${maxRetries} attempts: ${errorMessage}`)
+          
+          return {
+            configId: config.id,
+            url: config.webhookUrl,
+            success: false,
+            status: response?.status || 0,
+            statusText: response?.statusText || 'Request failed',
+            error: errorMessage
+          }
         }
       } catch (error) {
         console.error(`Error forwarding to webhook ${config.webhookUrl}:`, error)
