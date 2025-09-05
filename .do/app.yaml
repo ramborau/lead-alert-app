@@ -1,0 +1,38 @@
+name: lead-alert-app
+region: nyc
+services:
+  - name: web
+    source_dir: /
+    github:
+      repo: rahul/lead-alert-app
+      branch: main
+      deploy_on_push: true
+    build_command: npm run build:production
+    run_command: npm start
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /
+    health_check:
+      http_path: /
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXTAUTH_URL
+        value: ${APP_URL}
+      - key: NEXTAUTH_SECRET
+        type: SECRET
+      - key: DATABASE_URL
+        type: SECRET
+      - key: FACEBOOK_APP_ID
+        type: SECRET  
+      - key: FACEBOOK_APP_SECRET
+        type: SECRET
+      - key: FACEBOOK_REDIRECT_URI
+        value: ${APP_URL}/api/auth/facebook/callback
+databases:
+  - name: lead-alert-db
+    engine: PG
+    production: false
+    version: "14"
