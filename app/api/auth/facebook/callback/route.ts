@@ -9,11 +9,11 @@ export async function GET(request: Request) {
   const error = searchParams.get('error')
   
   if (error) {
-    return NextResponse.redirect(new URL('/settings?error=facebook_denied', request.url))
+    return NextResponse.redirect(new URL('/settings?error=facebook_denied', process.env.NEXTAUTH_URL || 'https://lead-alert-app-fzlay.ondigitalocean.app'))
   }
   
   if (!code || !state) {
-    return NextResponse.redirect(new URL('/settings?error=invalid_request', request.url))
+    return NextResponse.redirect(new URL('/settings?error=invalid_request', process.env.NEXTAUTH_URL || 'https://lead-alert-app-fzlay.ondigitalocean.app'))
   }
   
   try {
@@ -77,9 +77,9 @@ export async function GET(request: Request) {
       }
     })
     
-    return NextResponse.redirect(new URL('/settings?success=facebook_connected', request.url))
+    return NextResponse.redirect(new URL('/settings?success=facebook_connected', process.env.NEXTAUTH_URL || 'https://lead-alert-app-fzlay.ondigitalocean.app'))
   } catch (error) {
     console.error('Facebook callback error:', error)
-    return NextResponse.redirect(new URL('/settings?error=connection_failed', request.url))
+    return NextResponse.redirect(new URL('/settings?error=connection_failed', process.env.NEXTAUTH_URL || 'https://lead-alert-app-fzlay.ondigitalocean.app'))
   }
 }
