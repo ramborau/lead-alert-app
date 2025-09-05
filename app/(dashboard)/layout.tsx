@@ -9,9 +9,14 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
-  
-  if (!session) {
+  try {
+    const session = await auth()
+    
+    if (!session) {
+      redirect('/login')
+    }
+  } catch (error) {
+    console.error('Dashboard layout auth error:', error)
     redirect('/login')
   }
 
