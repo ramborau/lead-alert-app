@@ -23,9 +23,47 @@ import {
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+interface FacebookPage {
+  id: string
+  pageId: string
+  name: string
+  isActive: boolean
+  createdAt: string
+  leadsCount: number
+}
+
+interface FacebookData {
+  connected: boolean
+  pages: FacebookPage[]
+  accountConnected: boolean
+  totalPages: number
+  totalLeads: number
+}
+
 export default function SettingsPage() {
   const searchParams = useSearchParams()
   const [isConnecting, setIsConnecting] = useState(false)
+  const [facebookData, setFacebookData] = useState<FacebookData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchFacebookData = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/facebook/pages')
+      if (response.ok) {
+        const data = await response.json()
+        setFacebookData(data)
+      }
+    } catch (error) {
+      console.error('Error fetching Facebook data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchFacebookData()
+  }, [])
 
   useEffect(() => {
     const success = searchParams.get('success')
@@ -33,6 +71,7 @@ export default function SettingsPage() {
 
     if (success === 'facebook_connected') {
       toast.success('Facebook account connected successfully!')
+      fetchFacebookData() // Refresh data after successful connection
     } else if (error) {
       const errorMessages: { [key: string]: string } = {
         facebook_denied: 'Facebook connection was denied',
@@ -79,39 +118,125 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium">Facebook Account</p>
                   <p className="text-sm text-muted-foreground">
-                    Connect to start capturing leads
+                    {loading ? 'Loading...' : (facebookData?.connected ? 
+                      `${facebookData.totalPages} pages connected` : 
+                      'Connect to start capturing leads'
+                    )}
                   </p>
                 </div>
               </div>
-              <Badge variant="outline">
-                <AlertCircle className="mr-1 h-3 w-3" />
-                Not Connected
+              <Badge variant={facebookData?.connected ? "default" : "outline"}>
+                {facebookData?.connected ? (
+                  <>
+                    <CheckCircle className="mr-1 h-3 w-3" />
+                    Connected
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="mr-1 h-3 w-3" />
+                    Not Connected
+                  </>
+                )}
               </Badge>
             </div>
 
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Connect your Facebook account to start capturing leads automatically from your Facebook pages.
-              </AlertDescription>
-            </Alert>
+            {facebookData?.connected ? (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Facebook account is connected successfully. You have {facebookData.totalPages} page(s) 
+                  and have captured {facebookData.totalLeads} lead(s) so far.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Connect your Facebook account to start capturing leads automatically from your Facebook pages.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="space-y-3">
-              <div className="text-center text-muted-foreground py-4">
-                <p>No Facebook pages connected yet.</p>
-                <p className="text-sm">Connect your Facebook account to see your pages here.</p>
-              </div>
+              {loading ? (
+                <div className="text-center text-muted-foreground py-4">
+                  <p>Loading Facebook pages...</p>
+                </div>
+              ) : facebookData?.connected && facebookData.pages.length > 0 ? (
+                <>
+                  <h4 className="font-medium mb-3">Connected Pages</h4>
+                  {facebookData.pages.map((page) => (
+                    <div key={page.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-8 w-8 bg-blue-600 rounded flex items-center justify-center">
+                          <Facebook className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{page.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {page.leadsCount} leads captured
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          Active
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="mt-4 p-4 bg-muted rounded-lg">
+                    <h5 className="font-medium mb-2">Permissions Granted:</h5>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span>Access leads for your Pages - All current and future Pages</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span>Show a list of the Pages you manage - All current and future Pages</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span>Manage accounts, settings and webhooks for a Page - All current and future Pages</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span>Manage your business - All current and future Businesses</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center text-muted-foreground py-4">
+                  <p>No Facebook pages connected yet.</p>
+                  <p className="text-sm">Connect your Facebook account to see your pages here.</p>
+                </div>
+              )}
             </div>
 
             <div className="flex space-x-2">
-              <Button 
-                className="flex-1"
-                onClick={handleConnectFacebook}
-                disabled={isConnecting}
-              >
-                <Facebook className="mr-2 h-4 w-4" />
-                {isConnecting ? 'Connecting...' : 'Connect Facebook'}
-              </Button>
+              {facebookData?.connected ? (
+                <Button 
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleConnectFacebook}
+                  disabled={isConnecting}
+                >
+                  <Facebook className="mr-2 h-4 w-4" />
+                  {isConnecting ? 'Connecting...' : 'Connect More Pages'}
+                </Button>
+              ) : (
+                <Button 
+                  className="flex-1"
+                  onClick={handleConnectFacebook}
+                  disabled={isConnecting}
+                >
+                  <Facebook className="mr-2 h-4 w-4" />
+                  {isConnecting ? 'Connecting...' : 'Connect Facebook'}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
