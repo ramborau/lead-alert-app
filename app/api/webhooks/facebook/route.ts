@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getLeadDetails, parseLeadData } from '@/lib/facebook'
+import { forwardLeadToWebhooks } from '@/lib/webhook-forwarder'
 import crypto from 'crypto'
 
 function verifyWebhookSignature(body: string, signature: string | null): boolean {
@@ -125,6 +126,30 @@ export async function POST(request: Request) {
             })
             
             console.log(`Lead saved successfully: ${lead.id}`)
+
+            // Forward lead to external webhooks
+            try {
+              const leadForForwarding = {
+                id: lead.id,
+                name: lead.name,
+                email: lead.email,
+                phone: lead.phone,
+                message: lead.message,
+                source: lead.source,
+                status: lead.status,
+                createdAt: lead.createdAt.toISOString(),
+                metadata: JSON.parse(lead.metadata || '{}'),
+                page: {
+                  name: page.name,
+                  pageId: page.pageId
+                }
+              }
+
+              await forwardLeadToWebhooks(leadForForwarding, page.userId, page.pageId)
+            } catch (forwardingError) {
+              console.error('Error forwarding lead to webhooks:', forwardingError)
+              // Don't fail the main webhook processing if forwarding fails
+            }
           } catch (fetchError) {
             console.error(`Failed to fetch lead details for ${leadgenId}:`, fetchError)
             // Create a basic lead record even if we can't fetch details

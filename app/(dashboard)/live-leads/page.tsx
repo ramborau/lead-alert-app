@@ -307,6 +307,21 @@ export default function LiveLeadsPage() {
                             <p className="text-sm text-muted-foreground">{lead.message}</p>
                           </div>
                         )}
+                        
+                        {/* Show all metadata */}
+                        {lead.metadata && (
+                          <div className="mt-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">All Received Data:</p>
+                            <div className="bg-muted p-3 rounded-md max-h-32 overflow-auto">
+                              <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                                {typeof lead.metadata === 'string' 
+                                  ? lead.metadata 
+                                  : JSON.stringify(lead.metadata, null, 2)
+                                }
+                              </pre>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                     

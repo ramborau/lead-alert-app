@@ -12,13 +12,19 @@ import {
   Settings, 
   LogOut,
   BarChart3,
-  Facebook
+  Facebook,
+  Activity,
+  Webhook,
+  TestTube
 } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Leads', href: '/leads', icon: Users },
+  { name: 'Live Monitor', href: '/live-leads', icon: Activity },
+  { name: 'Webhook Forwarding', href: '/webhook-forwarding', icon: Webhook },
+  { name: 'Test Webhook', href: '/test-webhook', icon: TestTube },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
