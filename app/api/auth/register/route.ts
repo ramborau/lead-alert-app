@@ -6,10 +6,7 @@ import { z } from 'zod'
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number')
-    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character')
+  password: z.string().min(6, 'Password must be at least 6 characters')
 })
 
 export async function POST(request: Request) {
@@ -50,7 +47,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { error: error.errors?.[0]?.message || 'Validation error' },
         { status: 400 }
       )
     }
