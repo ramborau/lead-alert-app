@@ -18,6 +18,7 @@ import {
   TestTube
 } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
+import FacebookConnectionStatus from '@/components/layout/FacebookConnectionStatus'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -61,22 +62,9 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Get Started */}
+      {/* Facebook Status */}
       <div className="border-t p-4">
-        <div className="rounded-lg bg-primary/10 p-3">
-          <div className="text-sm font-medium text-primary mb-2">
-            Get Started
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Connect your Facebook account to start capturing leads automatically.
-          </p>
-          <Button size="sm" className="w-full" asChild>
-            <Link href="/settings">
-              <Facebook className="mr-2 h-3 w-3" />
-              Connect Facebook
-            </Link>
-          </Button>
-        </div>
+        <FacebookConnectionStatus />
       </div>
 
       {/* User Menu */}

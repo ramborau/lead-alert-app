@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       ]
     }
 
-    const [leads, total] = await Promise.all([
+    const [leads, total, stats, pagesWithLeads] = await Promise.all([
       prisma.lead.findMany({
         where,
         include: {
@@ -60,11 +60,53 @@ export async function GET(request: Request) {
         skip: (page - 1) * limit,
         take: limit
       }),
-      prisma.lead.count({ where })
+      prisma.lead.count({ where }),
+      // Get lead statistics
+      Promise.all([
+        prisma.lead.count({ where: { userId: session.user.id } }),
+        prisma.lead.count({ where: { userId: session.user.id, status: 'new' } }),
+        prisma.lead.count({ where: { userId: session.user.id, status: 'contacted' } }),
+        prisma.lead.count({ where: { userId: session.user.id, status: 'converted' } })
+      ]),
+      // Get pages with leads only
+      prisma.facebookPage.findMany({
+        where: {
+          userId: session.user.id,
+          leads: {
+            some: {}
+          }
+        },
+        select: {
+          id: true,
+          pageId: true,
+          name: true,
+          _count: {
+            select: {
+              leads: true
+            }
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      })
     ])
+
+    const [totalLeads, newLeads, contactedLeads, convertedLeads] = stats
+    const pages = pagesWithLeads.map(page => ({
+      id: page.id,
+      pageId: page.pageId,
+      name: page.name,
+      leadsCount: page._count.leads
+    }))
 
     return NextResponse.json({
       leads,
+      totalLeads,
+      newLeads,
+      contactedLeads,
+      convertedLeads,
+      pages,
       pagination: {
         page,
         limit,

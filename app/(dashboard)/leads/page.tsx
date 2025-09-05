@@ -95,10 +95,11 @@ export default function LeadsPage() {
             Manage and track all your Facebook leads in one place.
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Export Leads
-        </Button>
+        <div className="text-right">
+          <p className="text-sm text-muted-foreground">
+            {leadsData?.totalLeads || 0} total leads
+          </p>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -205,62 +206,92 @@ export default function LeadsPage() {
           <CardContent>
             <div className="space-y-4">
               {leadsData.leads.map((lead) => (
-                <div key={lead.id} className="p-4 border rounded-lg">
+                <div key={lead.id} className="p-6 border rounded-xl bg-gradient-to-r from-white to-gray-50 hover:shadow-lg transition-all duration-200">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="font-semibold">{lead.name}</h3>
-                        <Badge variant="secondary" className={getStatusColor(lead.status)}>
-                          {lead.status}
-                        </Badge>
-                        {lead.page && (
-                          <Badge variant="outline" className="text-blue-600">
-                            <Facebook className="mr-1 h-3 w-3" />
-                            {lead.page.name}
+                      {/* Header Section */}
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-sm">
+                              {lead.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-lg">{lead.name}</h3>
+                            <p className="text-sm text-muted-foreground">{lead.source}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="secondary" className={getStatusColor(lead.status)}>
+                            {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
                           </Badge>
-                        )}
+                          {lead.page && (
+                            <Badge variant="outline" className="text-blue-600 border-blue-200">
+                              <Facebook className="mr-1 h-3 w-3" />
+                              {lead.page.name}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center space-x-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span>{lead.email}</span>
+                      {/* Contact Details */}
+                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-3 p-2 bg-white rounded-lg border">
+                            <Mail className="h-5 w-5 text-blue-500" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Email</p>
+                              <p className="font-medium">{lead.email}</p>
+                            </div>
+                          </div>
+                          {lead.phone && (
+                            <div className="flex items-center space-x-3 p-2 bg-white rounded-lg border">
+                              <Phone className="h-5 w-5 text-green-500" />
+                              <div>
+                                <p className="text-xs text-muted-foreground">Phone</p>
+                                <p className="font-medium">{lead.phone}</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        {lead.phone && (
-                          <div className="flex items-center space-x-2">
-                            <Phone className="h-4 w-4 text-muted-foreground" />
-                            <span>{lead.phone}</span>
-                          </div>
-                        )}
-                        {lead.message && (
-                          <div className="mt-2">
-                            <p className="text-sm text-muted-foreground">{lead.message}</p>
-                          </div>
-                        )}
                         
-                        {/* Show all received data */}
-                        {lead.metadata && (
-                          <div className="mt-3">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">All Facebook Data:</p>
-                            <div className="bg-muted p-3 rounded-md max-h-32 overflow-auto">
-                              <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                        <div className="flex items-center space-x-3 p-2 bg-white rounded-lg border">
+                          <Calendar className="h-5 w-5 text-purple-500" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Received</p>
+                            <p className="font-medium">{formatTime(lead.createdAt)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Message */}
+                      {lead.message && (
+                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <p className="text-xs font-medium text-amber-800 mb-1">Message</p>
+                          <p className="text-sm text-amber-900">{lead.message}</p>
+                        </div>
+                      )}
+                      
+                      {/* All Facebook Data */}
+                      {lead.metadata && (
+                        <div className="mt-4">
+                          <details className="group">
+                            <summary className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border cursor-pointer hover:bg-slate-100 transition-colors">
+                              <span className="text-sm font-medium text-slate-700">Complete Facebook Data</span>
+                              <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>
+                            </summary>
+                            <div className="mt-2 p-4 bg-slate-900 rounded-lg border max-h-48 overflow-auto">
+                              <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap">
                                 {typeof lead.metadata === 'string' 
                                   ? lead.metadata 
-                                  : JSON.stringify(lead.metadata, null, 2)
+                                  : JSON.stringify(JSON.parse(lead.metadata), null, 2)
                                 }
                               </pre>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="text-right text-sm text-muted-foreground">
-                      <div className="flex items-center space-x-1 mb-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>{formatTime(lead.createdAt)}</span>
-                      </div>
-                      <p className="text-xs">{lead.source}</p>
+                          </details>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
