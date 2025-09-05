@@ -4,7 +4,7 @@ services:
   - name: web
     source_dir: /
     github:
-      repo: rahul/lead-alert-app
+      repo: ramborau/lead-alert-app
       branch: main
       deploy_on_push: true
     build_command: npm run build:production
