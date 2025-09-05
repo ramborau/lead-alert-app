@@ -148,9 +148,11 @@ export default async function DashboardPage() {
                         Manage Settings
                       </a>
                     </Button>
-                    <Button className="w-full justify-start" variant="outline" onClick={() => window.location.href = '/api/auth/facebook/connect'}>
-                      <Facebook className="mr-2 h-4 w-4" />
-                      Connect More Pages
+                    <Button className="w-full justify-start" variant="outline" asChild>
+                      <a href="/api/auth/facebook/connect">
+                        <Facebook className="mr-2 h-4 w-4" />
+                        Connect More Pages
+                      </a>
                     </Button>
                   </div>
                 </CardContent>
