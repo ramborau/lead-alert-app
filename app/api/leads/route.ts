@@ -22,8 +22,12 @@ export async function GET(request: Request) {
   const searchParam = searchParams.get('search')
   const pageIdParam = searchParams.get('pageId') // For filtering by Facebook page
   
-  const page = Math.max(1, parseInt(pageParam || '1')) // Ensure page is at least 1
-  const limit = Math.max(1, Math.min(100, parseInt(limitParam || '10'))) // Ensure limit is between 1-100
+  // Handle page parameter - 'all' should default to page 1
+  const parsedPage = pageParam === 'all' ? 1 : parseInt(pageParam || '1')
+  const page = Math.max(1, isNaN(parsedPage) ? 1 : parsedPage) // Ensure page is at least 1 and not NaN
+  
+  const parsedLimit = parseInt(limitParam || '10') 
+  const limit = Math.max(1, Math.min(100, isNaN(parsedLimit) ? 10 : parsedLimit)) // Ensure limit is between 1-100 and not NaN
   const status = statusParam
   const search = searchParam
   const pageIdFilter = pageIdParam
