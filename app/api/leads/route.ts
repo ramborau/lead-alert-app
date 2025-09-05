@@ -18,12 +18,26 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const pageParam = searchParams.get('page')
   const limitParam = searchParams.get('limit') 
+  const statusParam = searchParams.get('status')
+  const searchParam = searchParams.get('search')
+  const pageIdParam = searchParams.get('pageId') // For filtering by Facebook page
+  
   const page = Math.max(1, parseInt(pageParam || '1')) // Ensure page is at least 1
   const limit = Math.max(1, Math.min(100, parseInt(limitParam || '10'))) // Ensure limit is between 1-100
-  const status = searchParams.get('status')
-  const search = searchParams.get('search')
+  const status = statusParam
+  const search = searchParam
+  const pageIdFilter = pageIdParam
 
-  console.log('API request params:', { pageParam, limitParam, page, limit, status, search })
+  console.log('API request params:', { 
+    pageParam, 
+    limitParam, 
+    page, 
+    limit, 
+    statusParam,
+    searchParam,
+    pageIdParam,
+    url: request.url
+  })
 
   try {
     const where: any = {
@@ -39,6 +53,13 @@ export async function GET(request: Request) {
         { name: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } }
       ]
+    }
+
+    // Handle page filtering - support both Facebook page ID and internal page ID
+    if (pageIdFilter && pageIdFilter !== 'all') {
+      where.page = {
+        pageId: pageIdFilter // Filter by Facebook page ID
+      }
     }
 
     console.log('Executing leads query with:', { 

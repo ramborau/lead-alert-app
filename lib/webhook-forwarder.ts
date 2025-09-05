@@ -90,9 +90,17 @@ export async function forwardLeadToWebhooks(lead: LeadData, userId: string, page
             
             response = await fetch(config.webhookUrl, {
               method: 'POST',
-              headers,
+              headers: {
+                ...headers,
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive'
+              },
               body: JSON.stringify(webhookPayload),
-              signal: AbortSignal.timeout(30000) // Increased to 30 seconds
+              signal: AbortSignal.timeout(30000), // Increased to 30 seconds
+              // Add additional options that might help with connectivity
+              redirect: 'follow',
+              referrerPolicy: 'no-referrer'
             })
             
             if (response.ok) {
@@ -107,7 +115,12 @@ export async function forwardLeadToWebhooks(lead: LeadData, userId: string, page
             }
           } catch (error) {
             lastError = error as Error
-            console.log(`Attempt ${attempt} failed with error:`, error instanceof Error ? error.message : error)
+            console.log(`Attempt ${attempt} failed with detailed error:`, {
+              message: error instanceof Error ? error.message : 'Unknown error',
+              cause: error instanceof Error && error.cause ? error.cause : 'No cause',
+              stack: error instanceof Error ? error.stack?.substring(0, 200) : 'No stack',
+              webhookUrl: config.webhookUrl
+            })
             if (attempt < maxRetries) {
               // Wait before retry (exponential backoff)
               await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000))
