@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getLeadDetails, parseLeadData } from '@/lib/facebook'
 import { forwardLeadToWebhooks } from '@/lib/webhook-forwarder'
+import { cookies } from 'next/headers'
 import crypto from 'crypto'
 
 function verifyWebhookSignature(body: string, signature: string | null): boolean {
@@ -19,6 +20,31 @@ function verifyWebhookSignature(body: string, signature: string | null): boolean
   console.log('Signature verification:', { provided: signature, expected: `sha256=${expectedSignature}`, isValid })
   
   return isValid
+}
+
+// Forward lead to simple app webhook
+async function forwardToSimpleAppWebhook(leadData: any, webhookUrl: string) {
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Source': 'simple-lead-forwarder',
+        'X-Timestamp': new Date().toISOString()
+      },
+      body: JSON.stringify({
+        event: 'lead.received',
+        timestamp: new Date().toISOString(),
+        lead: leadData
+      }),
+      signal: AbortSignal.timeout(30000) // 30 second timeout
+    })
+
+    return response.ok
+  } catch (error) {
+    console.error('Error forwarding lead to simple app webhook:', error)
+    return false
+  }
 }
 
 export async function POST(request: Request) {
@@ -67,26 +93,95 @@ export async function POST(request: Request) {
           })
           
           if (!page) {
-            console.error(`Page ${pageId} not found in database`)
-            // Still try to create a lead even if page not found (for testing)
-            const lead = await prisma.lead.create({
-              data: {
-                name: 'Test Lead',
-                email: `test-${Date.now()}@facebook.com`,
-                phone: null,
-                message: `Test lead from page ${pageId}`,
-                source: 'facebook_leadgen',
-                pageId: pageId, // Use Facebook page ID directly
-                userId: 'test-user', // Temporary for testing
-                metadata: JSON.stringify({
-                  leadgenId,
-                  pageId,
-                  timestamp: new Date().toISOString(),
-                  testLead: true
-                })
+            console.error(`Page ${pageId} not found in database, checking simple app configuration`)
+            
+            // Check if this is for simple app by looking for simple-config cookie
+            const cookieStore = cookies()
+            const configCookie = cookieStore.get('simple-config')
+            
+            if (configCookie) {
+              try {
+                const config = JSON.parse(configCookie.value)
+                console.log('Found simple app configuration:', { pageId: config.pageId, formId: config.formId })
+                
+                // Check if this lead is for the configured page
+                if (pageId === config.pageId) {
+                  const formId = change.value.form_id
+                  
+                  // Check if it's from the configured form (if specified)
+                  if (!config.formId || formId === config.formId) {
+                    console.log(`Processing simple app lead ${leadgenId} from page ${pageId}`)
+                    
+                    // Fetch lead details from Facebook using the simple app's access token
+                    const leadResponse = await fetch(
+                      `https://graph.facebook.com/v18.0/${leadgenId}?access_token=${config.accessToken}`
+                    )
+                    
+                    if (leadResponse.ok) {
+                      const leadData = await leadResponse.json()
+                      
+                      // Parse field data
+                      const fields: any = {}
+                      if (leadData.field_data) {
+                        for (const field of leadData.field_data) {
+                          fields[field.name] = field.values?.[0] || ''
+                        }
+                      }
+                      
+                      // Prepare lead object for simple app
+                      const leadForForwarding = {
+                        id: leadgenId,
+                        form_id: formId || config.formId,
+                        form_name: config.formName,
+                        page_id: pageId,
+                        page_name: config.pageName,
+                        created_time: leadData.created_time,
+                        fields: fields,
+                        raw_data: leadData
+                      }
+                      
+                      // Forward to simple app webhook
+                      const forwarded = await forwardToSimpleAppWebhook(leadForForwarding, config.webhookUrl)
+                      
+                      if (forwarded) {
+                        console.log(`Successfully forwarded simple app lead ${leadgenId}`)
+                      } else {
+                        console.error(`Failed to forward simple app lead ${leadgenId}`)
+                      }
+                    } else {
+                      console.error('Failed to fetch lead details for simple app')
+                    }
+                  } else {
+                    console.log(`Ignoring lead from different form: ${formId} (expected: ${config.formId})`)
+                  }
+                } else {
+                  console.log(`Ignoring lead for different page: ${pageId} (expected: ${config.pageId})`)
+                }
+              } catch (configError) {
+                console.error('Error parsing simple app configuration:', configError)
               }
-            })
-            console.log(`Test lead created: ${lead.id}`)
+            } else {
+              console.log('No simple app configuration found, creating test lead')
+              // Still try to create a lead even if page not found (for testing)
+              const lead = await prisma.lead.create({
+                data: {
+                  name: 'Test Lead',
+                  email: `test-${Date.now()}@facebook.com`,
+                  phone: null,
+                  message: `Test lead from page ${pageId}`,
+                  source: 'facebook_leadgen',
+                  pageId: pageId, // Use Facebook page ID directly
+                  userId: 'test-user', // Temporary for testing
+                  metadata: JSON.stringify({
+                    leadgenId,
+                    pageId,
+                    timestamp: new Date().toISOString(),
+                    testLead: true
+                  })
+                }
+              })
+              console.log(`Test lead created: ${lead.id}`)
+            }
             continue
           }
           
