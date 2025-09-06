@@ -22,15 +22,27 @@ export async function GET(request: Request) {
   const searchParam = searchParams.get('search')
   const pageIdParam = searchParams.get('pageId') // For filtering by Facebook page
   
-  // Handle page parameter - 'all' should default to page 1
-  const parsedPage = pageParam === 'all' ? 1 : parseInt(pageParam || '1')
-  const page = Math.max(1, isNaN(parsedPage) ? 1 : parsedPage) // Ensure page is at least 1 and not NaN
+  // Handle page parameter - detect if it's a Facebook page ID vs pagination page
+  let page = 1
+  let pageIdFilter = pageIdParam
+  
+  if (pageParam === 'all' || !pageParam) {
+    page = 1
+  } else {
+    const parsedPage = parseInt(pageParam)
+    // If pageParam is a long number (like Facebook page ID), treat it as page filter
+    if (!isNaN(parsedPage) && pageParam.length > 10) {
+      pageIdFilter = pageParam  // This is a Facebook page ID
+      page = 1  // Reset to page 1 for pagination
+    } else {
+      page = Math.max(1, isNaN(parsedPage) ? 1 : parsedPage)
+    }
+  }
   
   const parsedLimit = parseInt(limitParam || '10') 
-  const limit = Math.max(1, Math.min(100, isNaN(parsedLimit) ? 10 : parsedLimit)) // Ensure limit is between 1-100 and not NaN
+  const limit = Math.max(1, Math.min(100, isNaN(parsedLimit) ? 10 : parsedLimit))
   const status = statusParam
   const search = searchParam
-  const pageIdFilter = pageIdParam
 
   console.log('API request params:', { 
     pageParam, 
@@ -40,6 +52,7 @@ export async function GET(request: Request) {
     statusParam,
     searchParam,
     pageIdParam,
+    pageIdFilter,
     url: request.url
   })
 
