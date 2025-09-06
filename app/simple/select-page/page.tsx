@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Facebook, FileText, ChevronRight, Loader2 } from 'lucide-react'
 
@@ -17,7 +17,7 @@ interface Form {
   leads_count?: number
 }
 
-export default function SelectPagePage() {
+function SelectPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [pages, setPages] = useState<Page[]>([])
@@ -262,5 +262,20 @@ export default function SelectPagePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function SelectPagePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex items-center justify-center">
+        <div className="bg-white rounded-lg p-6 shadow-xl">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SelectPageContent />
+    </Suspense>
   )
 }
