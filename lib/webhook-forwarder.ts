@@ -88,20 +88,32 @@ export async function forwardLeadToWebhooks(lead: LeadData, userId: string, page
           try {
             console.log(`Attempt ${attempt}/${maxRetries} for webhook: ${config.webhookUrl}`)
             
-            response = await fetch(config.webhookUrl, {
-              method: 'POST',
-              headers: {
-                ...headers,
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate',
-                'Connection': 'keep-alive'
-              },
-              body: JSON.stringify(webhookPayload),
-              signal: AbortSignal.timeout(30000), // Increased to 30 seconds
-              // Add additional options that might help with connectivity
-              redirect: 'follow',
-              referrerPolicy: 'no-referrer'
-            })
+            // Try different approaches for better connectivity
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 30000)
+            
+            try {
+              response = await fetch(config.webhookUrl, {
+                method: 'POST',
+                headers: {
+                  ...headers,
+                  'Accept': 'application/json, text/plain, */*',
+                  'Accept-Encoding': 'gzip, deflate, br',
+                  'Connection': 'keep-alive',
+                  'Cache-Control': 'no-cache',
+                  'Pragma': 'no-cache'
+                },
+                body: JSON.stringify(webhookPayload),
+                signal: controller.signal,
+                redirect: 'follow',
+                referrerPolicy: 'no-referrer',
+                keepalive: false
+              })
+              clearTimeout(timeoutId)
+            } catch (fetchError) {
+              clearTimeout(timeoutId)
+              throw fetchError
+            }
             
             if (response.ok) {
               console.log(`Successfully forwarded lead ${lead.id} to ${config.webhookUrl} on attempt ${attempt}`)
@@ -119,7 +131,10 @@ export async function forwardLeadToWebhooks(lead: LeadData, userId: string, page
               message: error instanceof Error ? error.message : 'Unknown error',
               cause: error instanceof Error && error.cause ? error.cause : 'No cause',
               stack: error instanceof Error ? error.stack?.substring(0, 200) : 'No stack',
-              webhookUrl: config.webhookUrl
+              name: error instanceof Error ? error.name : 'Unknown',
+              code: (error as any)?.code || 'No code',
+              webhookUrl: config.webhookUrl,
+              timestamp: new Date().toISOString()
             })
             if (attempt < maxRetries) {
               // Wait before retry (exponential backoff)
